@@ -1,189 +1,164 @@
-# Data Dictionary — Draft v0.1
+# Data Dictionary — Baseline v1.0
 
-**Project:** AI-Native Growth Operations OS · DESKFLOW · Meta Ads
+**Project:** AI-Native Growth Operations OS · DESKFLOW · Meta Ads  
+**Reviewed:** November 12, 2026  
+**Source:** `DESKFLOW_simulated_marketing_data_v1.xlsx`  
+**Status:** Source structure and stored metric calculations verified. Business definitions and reporting metadata remain partly unresolved.
 
-**Prepared:** November 12, 2026
+## 1. Scope and Provenance
 
-**Status:** Proposed project conventions; source-file reconciliation pending.
+This dictionary describes the actual supplied workbook, replacing Draft v0.1's proposed schemas. Source headers are preserved exactly below; no normalized dataset has been created. The source workbook has not been modified.
 
-## 1. Scope and Evidence
+All records are labeled `SIMULATED`. The file contains no live account connection, execution evidence, or demonstrated causal growth results. Scenario tags and AI text are synthetic annotations, not verified diagnoses or outputs of the project's future agents.
 
-The planned baseline is `data/simulated/DESKFLOW_simulated_marketing_data_v1.xlsx`. Project discussions identify three baseline sheets: **Campaign Data**, **Creative Data**, and **Experiment Log**. The workbook is not available in the local project, so sheet names, headers, types, row counts, values, and relationships have not been independently verified.
+| Sheet | Data rows, excluding header | Columns | Observed grain | Verified unique key |
+| --- | --- | --- | --- | --- |
+| Campaign Data | 150 | 18 | One campaign per reporting date | (`Date`, `Campaign_ID`) |
+| Creative Data | 15 | 11 | One creative record with a campaign association | `Creative_ID` |
+| Experiment Log | 6 | 10 | One logged recommendation/observation | `Experiment_ID` |
 
-This document defines a proposed normalized interpretation for those sheets. It is not an inventory of confirmed source columns. All field names below are proposed canonical names, and all source-header mappings remain pending. Missing fields must be reported as gaps, not invented or silently filled. Preserve the baseline workbook unchanged; implement approved mappings and upgrades in Week 2.
+Campaign reporting covers October 1–30, 2026 inclusive: five campaigns, each with 30 daily records. The workbook contains stored values, not Excel formulas. No Excel error cells were found.
 
-The dictionary does not claim API compatibility or official Meta field definitions. Click, conversion, and attribution conventions below are project proposals that require source confirmation.
+## 2. Shared Types and Conventions
 
-## 2. Shared Conventions
+- IDs and labels are text. Join by IDs, not names; preserve leading zeros.
+- `Date`, `Launch_Date`, and `Date_Logged` are stored as text in `YYYY-MM-DD` form. A future loader must parse and validate them explicitly.
+- Count measures are nonnegative integer-valued numbers. Monetary measures are nonnegative numbers in USD major units, not cents.
+- Rate values are fractions: `0.02` means `2%`. ROAS is a multiple, not a percentage.
+- Blank means unavailable or undefined; it must not be silently converted to zero.
+- Field types describe observed content and intended interpretation, not a formally enforced Excel schema.
+- Display rounding must not change calculation inputs. The independent numeric comparison used absolute/relative tolerance of `1e-9` for stored floating-point ratios, not an operational performance threshold.
 
-| Topic | Proposed convention |
+## 3. Campaign Data
+
+| Source field | Type / unit | Definition and observed constraints |
+| --- | --- | --- |
+| `Date` | date text | Campaign reporting date, October 1–30, 2026 |
+| `Campaign_ID` | text | Stable ID; observed C001–C005; part of unique key |
+| `Campaign_Name` | text | Human-readable campaign label, not a join key |
+| `Objective` | text | Synthetic objective label; all rows contain `Sales` |
+| `Spend_USD` | number, USD | Daily advertising spend; positive in all supplied rows |
+| `Impressions` | integer | Daily impression count; positive in all supplied rows |
+| `Clicks` | integer | Daily clicks; positive in all supplied rows; exact click type is not documented |
+| `Conversions` | integer | Daily attributed conversion count; includes three zero values; purchase-event meaning requires confirmation |
+| `Revenue_USD` | number, USD | Synthetic attributed revenue; not profit or incremental revenue; precise event-value definition is undocumented |
+| `Currency` | text | All rows contain `USD` |
+| `Attribution_Window` | text | All rows contain `7d_click (simulated)`; preserve as source metadata |
+| `Data_Type` | text | All rows contain `SIMULATED` |
+| `Scenario_Tag` | text | Synthetic scenario annotation; not a measured outcome or model prediction |
+| `CTR` | number, fraction | `Clicks / Impressions` |
+| `CPC_USD` | number, USD/click | `Spend_USD / Clicks` |
+| `CVR` | number, fraction | `Conversions / Clicks`; not session-based onsite CVR |
+| `CPA_USD` | nullable number, USD/conversion | `Spend_USD / Conversions`; blank when conversions are zero |
+| `ROAS` | number, multiple | `Revenue_USD / Spend_USD` |
+
+### Campaign and Scenario Labels
+
+| Campaign ID | Campaign name | Scenario tag |
+| --- | --- | --- |
+| C001 | Core_Desk_Organization | Stable baseline |
+| C002 | Remote_Work_Problem_Solution | High clicks, low conversion |
+| C003 | Broad_Audience_Scale | High spend, low return |
+| C004 | Modular_Desk_Setup_Video | Creative fatigue |
+| C005 | Minimalist_Desk_Enthusiasts | Promising but low volume |
+
+Tags describe intended synthetic scenarios. Their statistical detectability and whether they match the numeric trends have not been evaluated in this structural review. In future anomaly evaluation, keep tags outside model inputs to avoid leaking the intended answer.
+
+### Conversion Interpretation
+
+The source calls its count `Conversions`, not `Purchases`. The project brief targets purchases, but this dictionary does not silently rename or assert that equivalence. Confirm the event before mapping `Conversions` to `purchases` or `Revenue_USD` to `purchase_revenue`. Until then, CPA means cost per source-defined conversion. It is not customer acquisition cost (CAC), because new-customer counts are absent.
+
+### CPM
+
+CPM is required by the project brief but is not a source column. It may be derived in a future prepared dataset as `1000 * Spend_USD / Impressions`, with unit USD per 1,000 impressions. It has not been added to the baseline.
+
+## 4. Creative Data
+
+This sheet is a creative inventory, not a daily performance table. It has no reporting `Date`, spend, impressions, clicks, conversions, or revenue columns. `Launch_Date` must not be interpreted as a daily reporting key.
+
+| Source field | Type | Definition |
+| --- | --- | --- |
+| `Creative_ID` | text | Unique creative identifier |
+| `Campaign_ID` | text | Campaign association; all supplied IDs exist in Campaign Data |
+| `Creative_Name` | text | Human-readable creative label |
+| `Format` | text | Observed categories: `Video`, `Carousel`, `Image` |
+| `Creative_Angle` | text | Creative approach or value-proposition category |
+| `Hook_or_Message` | text | Opening hook or advertising message |
+| `Audience_Concept` | text | Intended audience concept; not verified delivery targeting |
+| `Launch_Date` | date text | Synthetic creative launch date |
+| `Market` | text | Market label |
+| `Product_Category` | text | Product-category label |
+| `Data_Type` | text | All rows contain `SIMULATED` |
+
+A campaign has multiple creative records. Joining every campaign-day performance row to its creatives duplicates campaign measures; do not sum the joined measures or allocate them equally to creatives. The inventory cannot establish creative-level CTR, CPA, ROAS, fatigue, or creative-to-ad attribution. Performance and exposure data are needed for those tasks.
+
+## 5. Experiment Log
+
+This is a synthetic suggestion and observation log. It is not a completed randomized experiment registry, and it contains no arm-level outcomes.
+
+| Source field | Type | Definition |
+| --- | --- | --- |
+| `Experiment_ID` | text | Unique log-entry identifier |
+| `Date_Logged` | date text | Date the recommendation or observation was logged; not an experiment start date |
+| `Campaign_ID` | text | Associated campaign; all supplied IDs exist in Campaign Data |
+| `Observed_Problem` | text | Synthetic problem or observation description |
+| `AI_Hypothesis` | text | Proposed explanation, not established causation |
+| `AI_Recommendation` | text | Suggested next action or investigation, not an executable command |
+| `Human_Approval` | text | Observed labels: `Pending`, `Approved for analysis only` |
+| `Action_Taken` | text | Narrative action record, not a machine-verifiable execution status |
+| `Result_or_Learning` | text | Narrative learning/status, not measured experimental lift |
+| `Data_Type` | text | All rows contain `SIMULATED` |
+
+Five entries are `Pending`. EXP005 is `Approved for analysis only`, with `No live account change` and `Baseline observation only`. This does not approve budget or status changes. No supplied row provides evidence of a completed controlled experiment or executed account modification.
+
+A future structured registry needs hypothesis, test variable, arms, assignment method, primary metric, sample requirements, duration, stopping conditions, and evidence references. Evaluation additionally needs arm-level observations. Missing evidence must produce an unavailable or inconclusive result, not an invented winner.
+
+## 6. Relationships and Aggregation
+
+1. Campaign Data is unique by (`Date`, `Campaign_ID`). Creative and experiment campaign references resolve to the campaign IDs in the performance sheet.
+2. Creative Data and Experiment Log are both one-to-many relative to campaign identity. Joining them directly to performance can multiply rows; aggregate or select context separately.
+3. Sum base measures only across nonoverlapping records with compatible reporting definitions. Recalculate ratios from summed numerators and denominators; never average daily CPA or ROAS without the appropriate weighting.
+4. No Ad Set IDs, Ad IDs, account configuration, budget ownership, or structured operation history are present. Do not fabricate that hierarchy from campaign or creative names.
+5. Missing dates/values are not zero activity. Complete-period claims require complete coverage.
+6. Do not merge incompatible attribution, currency, timezone, or reporting time bases.
+
+## 7. Calculation and Missing-Value Rules
+
+- A zero denominator yields null with reason `zero_denominator`, not zero or infinity. A missing numerator or denominator yields null with reason `missing_input` in future prepared outputs.
+- The baseline has three zero-conversion rows and three blank `CPA_USD` cells; these blanks correctly represent undefined CPA. All other inspected source cells are populated.
+- Positive spend with zero revenue yields ROAS zero; this differs from undefined CPA when conversions are zero.
+- Aggregate CPA = total spend / total conversions; aggregate ROAS = total revenue / total spend.
+- Relative change = `(current - previous) / previous`; zero/missing prior values make the relative change unavailable.
+- Percentage-point change for rates = `100 * (current - previous)`. Compare equally sized complete periods with matching definitions.
+- Source-reported ratios are static values. Future transformations should recalculate them without overwriting the source.
+
+For example, Campaign Data row 2 contains spend 91.02 USD and 8 conversions. CPA = 91.02 / 8 = 11.3775 USD per conversion. Reversing the ratio gives conversions per dollar, not CPA.
+
+## 8. Verification Results and Limits
+
+| Check | Result |
 | --- | --- |
-| Names | Canonical fields use `snake_case`; preserve original source headers in the mapping record |
-| IDs | Nonempty strings; preserve leading zeros; names are not identifiers |
-| Dates | Calendar dates in `YYYY-MM-DD` format |
-| Timestamps | ISO 8601 with explicit UTC offset; use UTC for system logs |
-| Reporting timezone | Required dataset metadata; not inferred from the US market or the operator's location |
-| Currency | Proposed USD for DESKFLOW; verify the workbook and record an ISO currency code |
-| Money | Nonnegative decimal amounts in major currency units, not cents; preserve source precision |
-| Counts | Nonnegative integers for the proposed synthetic model; flag fractional source values for review rather than rounding |
-| Ratios | Store as decimal fractions, e.g. `0.025`; display as `2.5%` where appropriate |
-| Missing values | Normalize blank/NA cells to null; zero means an observed zero, not unknown |
-| Synthetic provenance | Record the dataset as synthetic in its metadata; never describe simulated results as real business outcomes |
+| Sheet names, headers, and row counts | Verified from all three sheets |
+| Campaign date range and daily coverage | 30 days for each of five campaigns |
+| Duplicate campaign-day, creative, or experiment keys | None found |
+| Creative/experiment references to unknown campaign IDs | None found |
+| Negative base measures or fractional count values | None found in Campaign Data |
+| Stored CTR, CPC, CVR, CPA, and ROAS | All 750 row/metric positions match recalculation, including three undefined CPAs |
+| Excel error cells | None found |
+| Excel formulas | None present; metric values are stored numbers |
+| Missing cells | Three CPA blanks, consistent with zero conversions |
+| Reporting timezone, extraction timestamp, reporting time basis | Not supplied |
+| Exact click type and conversion event | Not supplied |
+| Scenario behavior and statistical detectability | Not evaluated in this review |
+| Real platform/API compatibility | Not assessed |
 
-### Dataset Metadata
+## 9. Remaining Metadata and Week 2 Work
 
-These properties must be recorded alongside the dataset before analysis. They are proposed metadata, not confirmed workbook columns.
+- Confirm click type, conversion event, revenue definition, reporting timezone, reporting time basis, and synthetic snapshot timestamp.
+- Preserve `7d_click (simulated)` as the observed attribution label; do not silently replace it with a different window or assert additional attribution behavior.
+- Add CPM and any approved canonical field mappings in a derived version.
+- Design Ad Set/Ad performance, account configuration, structured approvals and operation logs, and experiment observations.
+- Bind each future approval to the exact action proposal. Pending, rejected, analysis-only, or invalid proposals must not execute. Changed proposals require renewed approval.
+- Define budget rules and experiment criteria in the requirements; this dictionary establishes no arbitrary thresholds.
 
-| Property | Type | Required | Definition |
-| --- | --- | --- | --- |
-| `dataset_version` | string | Yes | Version identifying the immutable input baseline |
-| `is_synthetic` | boolean | Yes | Must be `true` for this dataset |
-| `platform` | string | Yes | `Meta Ads` for the planned MVP |
-| `currency` | string | Yes | Currency shared by monetary measures |
-| `reporting_timezone` | string | Yes | Named reporting timezone used to interpret dates |
-| `click_definition` | string | Yes | Exact click measure; proposed: link clicks |
-| `purchase_definition` | string | Yes | Exact attributed purchase event being counted |
-| `attribution_window` | string | Yes | Explicit click-through/view-through windows; unresolved until verified |
-| `reporting_time_basis` | string | Yes | Whether conversion metrics are assigned to interaction date or conversion date |
-| `coverage_start` / `coverage_end` | date | Yes | Inclusive coverage interval |
-| `data_as_of` | timestamp | Yes | Snapshot time for the synthetic reporting data |
-
-Do not combine records with incompatible currency, timezone, click definitions, attribution windows, reporting time basis, or dataset versions. Unresolved metadata blocks interpretation of affected metrics and period comparisons.
-
-## 3. Campaign Data — Proposed Canonical Fields
-
-**Target grain:** one campaign per reporting date, with one consistent set of reporting definitions. **Proposed unique key:** (`date`, `campaign_id`) within a dataset version. This assumes one account and no device, placement, audience, or other breakdown. If source rows use a different grain, revise the mapping before aggregation; do not discard apparent duplicates.
-
-`Required` means required by the proposed analysis model, not confirmed present in the workbook.
-
-| Field | Type | Required | Meaning and validation |
-| --- | --- | --- | --- |
-| `date` | date | Yes | Reporting date within dataset coverage |
-| `campaign_id` | string | Yes | Stable campaign identifier |
-| `campaign_name` | string | No | Human-readable label; not a join key |
-| `spend` | decimal | Yes | Advertising cost in the dataset currency; >= 0 |
-| `impressions` | integer | Yes | Delivered impression count; >= 0 |
-| `clicks` | integer | Yes | Count under `click_definition`; >= 0 |
-| `purchases` | integer | Yes | Attributed purchase events under the declared definition; >= 0 |
-| `purchase_revenue` | decimal | Yes | Attributed purchase value, not profit or incremental revenue; >= 0 |
-| `ctr` | decimal | Derived | `clicks / impressions` |
-| `cpc` | decimal | Derived | `spend / clicks`, currency per click |
-| `cpm` | decimal | Derived | `1000 * spend / impressions`, currency per 1,000 impressions |
-| `cvr` | decimal | Derived | `purchases / clicks`; project click-to-purchase ratio, not onsite session CVR |
-| `cpa` | decimal | Derived | `spend / purchases`, currency per attributed purchase |
-| `roas` | decimal | Derived | `purchase_revenue / spend`, expressed as a multiple |
-
-Do not label CPA as CAC: the baseline does not establish new-customer counts. View-through purchases and repeat purchase events may make purchases exceed clicks; CVR is a diagnostic ratio, not necessarily a probability bounded by 1.
-
-## 4. Creative Data — Proposed Canonical Fields
-
-**Proposed target grain:** one campaign–creative pair per reporting date. **Proposed unique key:** (`date`, `campaign_id`, `creative_id`) within a dataset version. Source grain is unverified; if the sheet is a static creative inventory or uses period totals, document that and revise this proposal before use.
-
-| Field | Type | Required | Meaning and validation |
-| --- | --- | --- | --- |
-| `date` | date | Yes | Reporting date; must align with the campaign report |
-| `campaign_id` | string | Yes | Campaign identifier for the corresponding campaign/date record |
-| `creative_id` | string | Yes | Stable creative identifier; does not establish an Ad ID |
-| `creative_name` | string | No | Human-readable label |
-| `creative_format` | string | No | Creative format label; preserve source categories until reviewed |
-| `message_angle` | string | No | Creative message or value proposition tag |
-| `spend` | decimal | Yes for performance analysis | Cost attributed to this creative slice |
-| `impressions` | integer | Yes for performance analysis | Impression count for this creative slice |
-| `clicks` | integer | Yes for performance analysis | Same click definition as campaign data |
-| `purchases` | integer | Yes for purchase analysis | Same purchase/attribution definitions as campaign data |
-| `purchase_revenue` | decimal | Yes for revenue analysis | Attributed purchase value for this creative slice |
-
-Numeric base fields follow Campaign Data types and nonnegative rules. Derived metrics use the formulas in Section 3. Missing purchase measures allow limited click analysis but block CPA/ROAS evaluation.
-
-Creative and campaign performance are alternate reporting levels. Never add them together. Reconciliation is valid only when creative rows provide complete, mutually exclusive coverage of the same campaign, dates, and reporting definitions. A creative may appear in multiple campaigns. Creative attributes should remain consistent per ID within a snapshot; conflicting attributes require review.
-
-The baseline does not establish creative-to-ad mappings, frequency, reach, or fatigue thresholds. Declining CTR may motivate a fatigue hypothesis but does not prove fatigue.
-
-## 5. Experiment Log — Proposed Canonical Fields
-
-**Target grain:** one experiment per row. **Proposed unique key:** `experiment_id`. This is a summary registry, not a substitute for experiment-arm observations.
-
-| Field | Type | Required | Meaning and validation |
-| --- | --- | --- | --- |
-| `experiment_id` | string | Yes | Unique experiment identifier |
-| `experiment_name` | string | No | Human-readable label |
-| `hypothesis` | string | Yes | Falsifiable business hypothesis |
-| `test_variable` | string | Yes | Deliberately changed variable |
-| `control_definition` | string | Yes | Control population, exposure, and configuration |
-| `treatment_definition` | string | Yes | Treatment population, exposure, and configuration |
-| `assignment_method` | string | Yes before launch | How units enter arms; distinguish randomized tests from observational comparisons |
-| `primary_metric` | string | Yes | Prespecified metric with a formula defined here or in the experiment plan |
-| `start_date` | date | Before launch | Inclusive planned start |
-| `end_date` | date | Before launch | Inclusive planned end; must be >= start |
-| `evaluation_conditions` | string | Before launch | Sample requirements, duration, stopping criteria, and analysis method |
-| `status` | enum | Yes | Proposed: `Draft`, `Planned`, `Running`, `Completed`, `Cancelled` |
-| `result_summary` | string | For completed records | Observed result, uncertainty, and evidence limitations |
-| `conclusion` | enum | For completed records | Proposed: `Supported`, `NotSupported`, `Inconclusive` |
-| `evidence_reference` | string | For completed records | Traceable reference to arm-level data and evaluation output |
-
-Status does not imply approval. A completed experiment can be inconclusive. Historical before/after comparisons alone do not establish causal lift. A `Supported` conclusion requires the prespecified evaluation conditions to be met; missing evidence must not be converted into a positive conclusion.
-
-## 6. Calculation and Aggregation Rules
-
-1. Recalculate derived metrics from validated base measures. Preserve source-reported metrics separately for comparison; do not overwrite the baseline.
-2. A zero denominator produces null with reason `zero_denominator`, not zero or infinity. A missing input produces null with reason `missing_input`. Thus zero purchases makes CPA null, while zero revenue with positive spend makes ROAS zero.
-3. Calculate group metrics from summed base measures, not the arithmetic mean of row-level ratios. For example, aggregate ROAS = total revenue / total spend.
-4. Aggregate only nonoverlapping rows at one grain and one reporting definition. Do not combine campaign totals with creative totals or overlapping reporting windows.
-5. Missing rows and missing required values mean incomplete coverage, not zero activity. Block a complete-period claim until coverage is resolved; partial analysis must be explicitly labeled.
-6. Round only display values. Preserve calculation precision. Differences from source ratios require documented display precision and tolerance before being judged errors.
-7. Relative change = `(current - previous) / previous`. If the previous value is zero or missing, relative change is null. For rate metrics, percentage-point change = `100 * (current - previous)`.
-8. Compare complete, equally sized periods with matching metadata. Synthetic snapshot maturity and attribution assumptions must be noted; avoid causal language based on period changes alone.
-
-### Illustrative Formula Check — Not Source Data
-
-For spend = 100 USD, impressions = 10,000, clicks = 200, purchases = 10, and purchase revenue = 500 USD:
-
-| Metric | Expected value |
-| --- | --- |
-| CTR | 0.02 = 2% |
-| CPC | 0.50 USD |
-| CPM | 10.00 USD |
-| CVR | 0.05 = 5% |
-| CPA | 10.00 USD |
-| ROAS | 5.0x |
-
-For two rows with spend/revenue of 100/500 and 900/900, aggregate ROAS is 1.4x, not the unweighted average of 5x and 1x (3x).
-
-## 7. Validation Rules
-
-| Check | Handling |
-| --- | --- |
-| Missing required headers, IDs, or reporting metadata | Block the affected analysis; record the missing requirement |
-| Invalid numeric types, negative base values, invalid dates | Reject affected rows from calculation and record errors; never silently coerce |
-| Duplicate proposed keys | Block aggregation until the actual grain or duplication is resolved |
-| Creative campaign/date without matching campaign record | Flag an unresolved relationship; block cross-level reconciliation |
-| Clicks greater than impressions | Flag for review against the declared click definition; do not automatically cap values |
-| Purchases greater than clicks | Review attribution/event definitions; not an automatic hard failure |
-| Revenue with zero purchases | Flag purchase/value definition inconsistency for review |
-| Source versus recalculated metrics differ | Review ratio units, rounding, and denominator definitions |
-| Campaign/creative totals differ | Check coverage and exclusivity before treating as an error |
-| Missing experiment evidence or conditions | Block a supported-outcome claim; record the evidence gap |
-
-No budget-change threshold, anomaly cutoff, or statistical significance level is established by this draft. Those belong in approved requirements and experiment plans.
-
-## 8. Week 2 Extensions — Not Existing Baseline Fields
-
-The MVP will need Ad Set and Ad performance with explicit hierarchy IDs, account configuration, approval and operation records, and experiment-arm observations. Their schemas are deferred to the Week 2 model upgrade.
-
-At minimum, future operation records must identify the action, target, proposed change, rule-validation result, approval decision, before/after state, and execution result. `Pending` and `Rejected` approvals must never permit execution; approval must bind to the exact proposal being executed. A changed proposal requires renewed approval. Failed validation blocks execution even after approval.
-
-Budget type, currency, configuration version, and budget ownership must be explicit before budget changes are simulated. Experiment observations need arm, assignment unit, reporting interval, and metric numerators/denominators to support the chosen evaluation method. These are design requirements, not claims that the workbook already contains these fields.
-
-## 9. Source Reconciliation Checklist
-
-- [ ] Obtain the unchanged baseline workbook and record its version and provenance.
-- [ ] Verify actual sheet names, headers, data types, date coverage, row counts, and grain.
-- [ ] Map each source header to a canonical field; record unmapped and missing fields.
-- [ ] Confirm reporting timezone, currency, click/purchase definitions, attribution, and reporting time basis.
-- [ ] Compare supplied metrics with recalculated metrics using documented precision.
-- [ ] Review uniqueness, missingness, hierarchy relationships, and cross-level coverage.
-- [ ] Verify experiment records and the availability of arm-level evidence.
-- [ ] Approve revisions before marking this dictionary source-verified.
-
-**Review outcome:** Internal design checks are documented in `data_dictionary_review.md`. Source-data verification remains pending.
-
+The baseline is suitable for initial campaign-metric analysis with explicit definition limitations. It is insufficient for creative-level performance attribution, controlled execution, or experiment-effect evaluation. Preserve v1 unchanged and version future upgrades separately.
